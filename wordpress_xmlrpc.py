@@ -46,7 +46,7 @@ class PingbackDoSAttacker(threading.Thread):
 # bruteforce attacks via xml-rpc
 class WordpressXMLRpc:
     headers = {"User-Agent" : "Mozilla/5.0 (Windows NT 10.0; rv:68.0) Gecko/20100101 Firefox/68.0"}
-    def __init__(self, thread_id, url):
+    def __init__(self, url):
         self.url = url
         self.session = requests.Session()
     
@@ -161,7 +161,7 @@ if __name__ == '__main__':
     url = args['target']
     server = args['server']
     username, password = args['username'], args['password']
-    cve = WordpressXMLRpc(0, url)
+    cve = WordpressXMLRpc(url)
     cve.is_wordpress()
     cve.check_access()
     cve.is_vuln()
