@@ -16,3 +16,4 @@ python cve_2016_6515.py --target 10.10.6.13 --username root
 ```
 
 **For Educational Purposes Only!!!**
+**Author takes no responsibility of any damage you cause**
