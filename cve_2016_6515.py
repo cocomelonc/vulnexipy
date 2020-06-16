@@ -30,6 +30,14 @@ class SSHLoginThread(threading.Thread):
                 print (LogColors.RED + "error connecting {}".format(self.host) + LogColors.ENDC)
                 print (LogColors.RED + "error: " + str(e) + LogColors.ENDC)
 
+# CVE-2016-6515
+# The auth_password function in auth-passwd.c 
+# in sshd in OpenSSH before 7.3 
+# does not limit password lengths 
+# for password authentication, 
+# which allows remote attackers to 
+# cause a denial of service 
+# (crypt CPU consumption) via a long string.
 class CVE2016_6515:
     
     # set crafted password by length

@@ -83,9 +83,13 @@ class RandomUserAgent:
         self.agent['platform'] = random.choice(['Machintosh', 'Windows', 'X11'])
 
 # CVE-2018-6389
-# DoS wordpress site by
-# large requests by
-# wp-admin load_scripts.php
+# In WordPress through 4.9.2, 
+# unauthenticated attackers can cause 
+# a denial of service (resource consumption) 
+# by using the large list of registered .js 
+# files (from wp-includes/script-loader.php) 
+# to construct a series of 
+# requests to load every file many times.
 class CVE2018_6389:
     headers = {"User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:61.0) Gecko/20100101 Firefox/61.0"}
 
