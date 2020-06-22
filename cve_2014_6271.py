@@ -4,7 +4,7 @@ from log_colors import *
 
 # CVE-2014-6271 - Shellshock
 class Shellshock():
-    def __init__(self, target, host, port):
+    def __init__(self, url, host, port):
         self.url = url
         self.host, self.port = host, port
         self.session = requests.Session()
