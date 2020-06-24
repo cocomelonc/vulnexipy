@@ -7,6 +7,10 @@ import string
 import base64
 
 # CVE-2019-16113
+# Bludit 3.9.2 allows remote code execution 
+# via bl-kernel/ajax/upload-images.php 
+# because PHP code can be entered with a .jpg file name, 
+# and then this PHP code can write other PHP code to a ../ pathname.
 class CVE2019_16113():
     def __init__(self, url, usr, pswd, cmd):
         self.url = url
