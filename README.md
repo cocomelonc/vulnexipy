@@ -42,5 +42,5 @@ CVE-2018-7600 - Drupal before 7.58, 8.x before 8.3.9, 8.4.x before 8.4.6, and 8.
 python cve_2018_7600.py --url http://10.10.10.151 --cmd whoami
 ```
 
-**For Educational Purposes Only!!!**
+**This tool is a Proof of Concept and is for Educational Purposes Only!!!**
 **Author takes no responsibility of any damage you cause**
