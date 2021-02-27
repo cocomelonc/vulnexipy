@@ -70,9 +70,9 @@ class CVE2009_2265:
 
     # exploitation logic
     def exploit(self):
-        generate_payload()
-        upload_payload()
-        trigger_shell()
+        self.generate_payload()
+        self.upload_payload()
+        self.trigger_shell()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
