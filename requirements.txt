@@ -3,3 +3,4 @@ requests==2.23.0
 paramiko==2.7.1
 pysmb==1.2.1
 beautifulsoup4==4.9.1
+pycryptodome==3.10.1

