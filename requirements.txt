@@ -1,5 +1,5 @@
 lxml>=4.6.2
-requests==2.23.0
+requests==2.31.0
 paramiko==2.7.1
 pysmb==1.2.1
 beautifulsoup4==4.9.1
